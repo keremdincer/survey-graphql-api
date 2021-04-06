@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Form {
+  id          Int        @id @default(autoincrement())
+  slug        String     @db.VarChar(255)
+  title       String     @db.VarChar(255)
+  description String?
+  published   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  scores      Score[]
+  sections    Section[]
+  userForms   UserForm[]
+}
+
+model Section {
+  id          Int        @id @default(autoincrement())
+  title       String?
+  description String?
+  questions   Question[]
+  form        Form?      @relation(fields: [formId], references: [id])
+  formId      Int?
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  body      String
+  required  Boolean  @default(true)
+  answers   Answer[]
+  section   Section? @relation(fields: [sectionId], references: [id])
+  sectionId Int?
+}
+
+model Answer {
+  id           Int           @id @default(autoincrement())
+  body         String
+  type         AnswerType    @default(RADIOBUTTON)
+  answerPoints AnswerPoint[]
+  userAnswers  UserAnswer[]
+  question     Question?     @relation(fields: [questionId], references: [id])
+  questionId   Int?
+}
+
+model Score {
+  id              Int              @id @default(autoincrement())
+  title           String
+  scoreThresholds ScoreThreshold[]
+  answerPoints    AnswerPoint[]
+  form            Form             @relation(fields: [formId], references: [id])
+  formId          Int
+}
+
+model ScoreThreshold {
+  id         Int         @id @default(autoincrement())
+  min        Int
+  max        Int
+  comment    String
+  color      Color       @default(NEUTRAL)
+  score      Score       @relation(fields: [scoreId], references: [id])
+  scoreId    Int
+  userScores UserScore[]
+}
+
+model AnswerPoint {
+  answerId Int
+  scoreId  Int
+  male     Float
+  female   Float
+
+  answer Answer @relation(fields: [answerId], references: [id])
+  score  Score  @relation(fields: [scoreId], references: [id])
+  @@id([answerId, scoreId])
+}
+
+model UserForm {
+  id          Int          @id @default(autoincrement())
+  createdAt   DateTime     @default(now())
+  done        Boolean      @default(false)
+  userAnswers UserAnswer[]
+  userScores  UserScore[]
+  formId      Int
+  form        Form         @relation(fields: [formId], references: [id])
+}
+
+model UserAnswer {
+  userFormId Int
+  userForm   UserForm @relation(fields: [userFormId], references: [id])
+  answerId   Int
+  answer     Answer   @relation(fields: [answerId], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@id([userFormId, answerId])
+}
+
+model UserScore {
+  id               Int            @id @default(autoincrement())
+  total            Float
+  average          Float
+  userFormId       Int
+  userForm         UserForm       @relation(fields: [userFormId], references: [id])
+  createdAt        DateTime       @default(now())
+  scoreThreshold   ScoreThreshold @relation(fields: [scoreThresholdId], references: [id])
+  scoreThresholdId Int
+}
+
+enum AnswerType {
+  RADIOBUTTON
+  CHECKBOX
+  NUMBER
+  TEXT
+}
+
+enum Color {
+  DANGER
+  WARNING
+  NEUTRAL
+  SUCCESS
+}
